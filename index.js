@@ -137,7 +137,7 @@ app.post('/slack/commands', async (req, res) => {
                 type: 'file_input',
                 action_id: 'attachments',
                 filetypes: [
-                'jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'avi', 'wmv', 'webm', 'm4v'],
+                'jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'wmv', 'webm'],
                 max_files: 5,
               },
               label: {
