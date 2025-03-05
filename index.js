@@ -136,12 +136,14 @@ app.post('/slack/commands', async (req, res) => {
               element: {
                 type: 'file_input',
                 action_id: 'attachments',
-                filetypes: ['jpg', 'jpeg', 'png', 'gif'],
-                max_files: 3,
+                filetypes: [
+                'jpg', 'jpeg', 'png', 'gif',
+                'mp4', 'mov', 'avi', 'wmv', 'webm', 'm4v'],
+                max_files: 5,
               },
               label: {
                 type: 'plain_text',
-                text: 'Screenshots',
+                text: 'Screenshots & Recordings',
               },
               optional: true,
             },
