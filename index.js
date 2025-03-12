@@ -12,6 +12,13 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+ // Get credentials
+ const slackToken = process.env.SLACK_BOT_TOKEN;
+ const jiraHost = process.env.JIRA_HOST;
+ const jiraEmail = process.env.JIRA_USERNAME;
+ const jiraToken = process.env.JIRA_API_TOKEN;
+ const jiraProject = process.env.JIRA_PROJECT_KEY;
+
 // Helper to verify Slack request signature
 async function verifySlackRequest(req) {
   // Implement actual signature verification logic here
@@ -279,12 +286,7 @@ app.post("/slack/interactive", async (req, res) => {
       const fileInputData = values.issue_attachments?.attachments;
       console.log("File input data:", JSON.stringify(fileInputData));
 
-      // Get credentials
-      const slackToken = process.env.SLACK_BOT_TOKEN;
-      const jiraHost = process.env.JIRA_HOST;
-      const jiraEmail = process.env.JIRA_USERNAME;
-      const jiraToken = process.env.JIRA_API_TOKEN;
-      const jiraProject = process.env.JIRA_PROJECT_KEY;
+     
 
       console.log("Environment check:", {
         jiraHost: Boolean(jiraHost),
