@@ -34,40 +34,34 @@ app.use(bodyParser.json());
 // #components
 const fetchComponents = async () => {
   try {
-    if (
-      customFieldResponse.data &&
-      (customFieldResponse.data.schema.custom.includes("select") ||
-        customFieldResponse.data.schema.custom.includes("multiselect"))
-    ) {
-      console.log(
-        "Log: ",
-        `${Buffer.from(`${jiraEmail}:${jiraToken}`).toString("base64")}`
-      );
-      // Second approach: Fetch the allowed values for this context
-      const contextId = ""; // You might need to determine the correct context ID
-      const optionsResponse = await axios.get(
-        `https://${jiraHost}/rest/api/3/field/customfield_10038/context`,
-        {
-          headers: {
-            Authorization: `Basic ${Buffer.from(
-              `${jiraEmail}:${jiraToken}`
-            ).toString("base64")}`,
-            Accept: "application/json",
-          },
-        }
-      );
-
-      console.log("Custom field options:", optionsResponse.data);
-
-      if (optionsResponse.data && optionsResponse.data.values) {
-        componentOptions = optionsResponse.data.values.map((option) => ({
-          text: {
-            type: "plain_text",
-            text: option.value,
-          },
-          value: option.id,
-        }));
+    console.log(
+      "Log: ",
+      `${Buffer.from(`${jiraEmail}:${jiraToken}`).toString("base64")}`
+    );
+    // Second approach: Fetch the allowed values for this context
+    const contextId = ""; // You might need to determine the correct context ID
+    const optionsResponse = await axios.get(
+      `https://${jiraHost}/rest/api/3/field/customfield_10038/context`,
+      {
+        headers: {
+          Authorization: `Basic ${Buffer.from(
+            `${jiraEmail}:${jiraToken}`
+          ).toString("base64")}`,
+          Accept: "application/json",
+        },
       }
+    );
+
+    console.log("Custom field options:", optionsResponse.data);
+
+    if (optionsResponse.data && optionsResponse.data.values) {
+      componentOptions = optionsResponse.data.values.map((option) => ({
+        text: {
+          type: "plain_text",
+          text: option.value,
+        },
+        value: option.id,
+      }));
     }
   } catch (fieldError) {
     console.error("Error fetching custom field options:", fieldError);
@@ -77,21 +71,6 @@ const fetchComponents = async () => {
   const fields =
     fieldsResponse.data?.projects?.[0]?.issuetypes?.[0]?.fields || {};
   console.log("Available fields:", Object.keys(fields));
-
-  // First approach: Fetch custom field metadata
-  const customFieldResponse = await axios.get(
-    `https://${jiraHost}/rest/api/3/field/customfield_10038`,
-    {
-      headers: {
-        Authorization: `Basic ${Buffer.from(
-          `${jiraEmail}:${jiraToken}`
-        ).toString("base64")}`,
-        Accept: "application/json",
-      },
-    }
-  );
-
-  console.log("Custom field metadata:", customFieldResponse.data);
 
   // actual return value should be fetched from Jira
   let components = [];
