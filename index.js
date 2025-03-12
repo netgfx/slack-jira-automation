@@ -1,17 +1,16 @@
 // Importing required dependencies
-const express = require('express');
-const axios = require('axios');
-const bodyParser = require('body-parser');
-const FormData = require('form-data');
-const { Buffer } = require('buffer');
-const dotenv = require('dotenv');
+const express = require("express");
+const axios = require("axios");
+const bodyParser = require("body-parser");
+const FormData = require("form-data");
+const { Buffer } = require("buffer");
+const dotenv = require("dotenv");
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 
 // Helper to verify Slack request signature
 async function verifySlackRequest(req) {
@@ -25,12 +24,42 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Parse JSON bodies
 app.use(bodyParser.json());
 
+// #components
+const fetchComponents = async () => {
+  const componentsResponse = await axios.get(
+    `https://${jiraHost}/rest/api/3/project/${jiraProject}/components`,
+    {
+      headers: {
+        Authorization: `Basic ${Buffer.from(
+          `${jiraEmail}:${jiraToken}`
+        ).toString("base64")}`,
+        Accept: "application/json",
+      },
+    }
+  );
+
+  const components = componentsResponse.data;
+
+  console.log("Components RAW:", JSON.stringify(components));
+
+  // Create options for the multi-select
+  const componentOptions = components.map((component) => ({
+    text: {
+      type: "plain_text",
+      text: component.name,
+    },
+    value: component.id,
+  }));
+
+  return componentOptions;
+};
+
 // Handle slash command
-app.post('/slack/commands', async (req, res) => {
+app.post("/slack/commands", async (req, res) => {
   try {
     const { isValid, body } = await verifySlackRequest(req);
     if (!isValid) {
-      return res.status(401).json({ error: 'Invalid request' });
+      return res.status(401).json({ error: "Invalid request" });
     }
 
     // Get the trigger ID and channel ID
@@ -43,123 +72,154 @@ app.post('/slack/commands', async (req, res) => {
     // Fetch the Slack token
     const slackToken = process.env.SLACK_BOT_TOKEN;
 
+    // wait for components or other elements to be fetched
+    const components = await fetchComponents();
+
+    console.log("Components:", JSON.stringify(components));
+
     // Open a modal in Slack
     const response = await axios.post(
-      'https://slack.com/api/views.open',
+      "https://slack.com/api/views.open",
       {
         trigger_id: triggerId,
         view: {
-          type: 'modal',
-          callback_id: 'qa_issue_modal',
+          type: "modal",
+          callback_id: "qa_issue_modal",
           private_metadata: privateMetadata,
           title: {
-            type: 'plain_text',
-            text: 'Report QA Issue',
+            type: "plain_text",
+            text: "Report QA Issue",
           },
           submit: {
-            type: 'plain_text',
-            text: 'Submit',
+            type: "plain_text",
+            text: "Submit",
           },
           blocks: [
             {
-              type: 'input',
-              block_id: 'issue_title',
+              type: "input",
+              block_id: "issue_title",
               element: {
-                type: 'plain_text_input',
-                action_id: 'title',
+                type: "plain_text_input",
+                action_id: "title",
                 placeholder: {
-                  type: 'plain_text',
-                  text: 'Enter issue title',
+                  type: "plain_text",
+                  text: "Enter issue title",
                 },
               },
               label: {
-                type: 'plain_text',
-                text: 'Issue Title',
+                type: "plain_text",
+                text: "Issue Title",
               },
             },
             {
-              type: 'input',
-              block_id: 'issue_description',
+              type: "input",
+              block_id: "issue_description",
               element: {
-                type: 'plain_text_input',
-                action_id: 'description',
+                type: "plain_text_input",
+                action_id: "description",
                 multiline: true,
                 placeholder: {
-                  type: 'plain_text',
-                  text: 'Describe the issue',
+                  type: "plain_text",
+                  text: "Describe the issue",
                 },
               },
               label: {
-                type: 'plain_text',
-                text: 'Description',
+                type: "plain_text",
+                text: "Description",
               },
               optional: true,
             },
             {
-              type: 'input',
-              block_id: 'issue_priority',
+              type: "input",
+              block_id: "issue_priority",
               element: {
-                type: 'static_select',
-                action_id: 'priority',
+                type: "static_select",
+                action_id: "priority",
                 options: [
                   {
                     text: {
-                      type: 'plain_text',
-                      text: 'High',
+                      type: "plain_text",
+                      text: "High",
                     },
-                    value: 'High',
+                    value: "High",
                   },
                   {
                     text: {
-                      type: 'plain_text',
-                      text: 'Medium',
+                      type: "plain_text",
+                      text: "Medium",
                     },
-                    value: 'Medium',
+                    value: "Medium",
                   },
                   {
                     text: {
-                      type: 'plain_text',
-                      text: 'Low',
+                      type: "plain_text",
+                      text: "Low",
                     },
-                    value: 'Low',
+                    value: "Low",
                   },
                 ],
               },
               label: {
-                type: 'plain_text',
-                text: 'Priority',
+                type: "plain_text",
+                text: "Priority",
               },
             },
             {
-              type: 'input',
-              block_id: 'issue_attachments',
+              type: "input",
+              block_id: "issue_components",
               element: {
-                type: 'file_input',
-                action_id: 'attachments',
-                filetypes: [
-                'jpg', 'jpeg', 'png', 'gif', 'mp4', 'mov', 'wmv', 'webm'],
-                max_files: 5,
+                type: "multi_static_select",
+                action_id: "components",
+                placeholder: {
+                  type: "plain_text",
+                  text: "Select components",
+                },
+                options: components,
               },
               label: {
-                type: 'plain_text',
-                text: 'Screenshots & Recordings',
+                type: "plain_text",
+                text: "Components",
               },
               optional: true,
             },
             {
-              type: 'input',
-              block_id: 'issue_assignee',
+              type: "input",
+              block_id: "issue_attachments",
               element: {
-                type: 'users_select',
-                action_id: 'assignee',
+                type: "file_input",
+                action_id: "attachments",
+                filetypes: [
+                  "jpg",
+                  "jpeg",
+                  "png",
+                  "gif",
+                  "mp4",
+                  "mov",
+                  "wmv",
+                  "webm",
+                ],
+                max_files: 5,
+              },
+              label: {
+                type: "plain_text",
+                text: "Screenshots & Recordings",
+              },
+              optional: true,
+            },
+            {
+              type: "input",
+              block_id: "issue_assignee",
+              element: {
+                type: "users_select",
+                action_id: "assignee",
                 placeholder: {
-                  type: 'plain_text',
-                  text: 'Select assignee',
+                  type: "plain_text",
+                  text: "Select assignee",
                 },
               },
               label: {
-                type: 'plain_text',
-                text: 'Assign To',
+                type: "plain_text",
+                text: "Assign To",
               },
               optional: true,
             },
@@ -169,32 +229,32 @@ app.post('/slack/commands', async (req, res) => {
       {
         headers: {
           Authorization: `Bearer ${slackToken}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       }
     );
 
     return res.status(200).send();
   } catch (error) {
-    console.error('Error handling slash command:', error);
+    console.error("Error handling slash command:", error);
     return res.status(500).json({ error: error.message });
   }
 });
 
 // Handle interactive components (modal submissions)
-app.post('/slack/interactive', async (req, res) => {
+app.post("/slack/interactive", async (req, res) => {
   try {
     const { isValid } = await verifySlackRequest(req);
     if (!isValid) {
-      return res.status(401).json({ error: 'Invalid request' });
+      return res.status(401).json({ error: "Invalid request" });
     }
 
     const payload = JSON.parse(req.body.payload);
     console.log(JSON.stringify(payload));
 
     if (
-      payload.type === 'view_submission' &&
-      payload.view.callback_id === 'qa_issue_modal'
+      payload.type === "view_submission" &&
+      payload.view.callback_id === "qa_issue_modal"
     ) {
       // Acknowledge the request immediately
       res.status(200).send();
@@ -202,17 +262,22 @@ app.post('/slack/interactive', async (req, res) => {
       // Process the form submission in the background
       const values = payload.view.state.values;
       const title = values.issue_title.title.value;
-      const description = values.issue_description.description?.value || '';
+      const description = values.issue_description.description?.value || "";
       const priority = values.issue_priority.priority.selected_option.value;
-      const assigneeSlackId = values.issue_assignee.assignee?.selected_user || '';
+      const assigneeSlackId =
+        values.issue_assignee.assignee?.selected_user || "";
+      // Extract selected components
+      const selectedComponents =
+        values.issue_components?.components?.selected_options || [];
+      const componentIds = selectedComponents.map((option) => option.value);
 
       // Debug the entire payload structure
-      console.log('Full view submission payload:', JSON.stringify(payload));
-      console.log('Values object:', JSON.stringify(values));
+      console.log("Full view submission payload:", JSON.stringify(payload));
+      console.log("Values object:", JSON.stringify(values));
 
       // Check specifically for the file input data
       const fileInputData = values.issue_attachments?.attachments;
-      console.log('File input data:', JSON.stringify(fileInputData));
+      console.log("File input data:", JSON.stringify(fileInputData));
 
       // Get credentials
       const slackToken = process.env.SLACK_BOT_TOKEN;
@@ -221,7 +286,7 @@ app.post('/slack/interactive', async (req, res) => {
       const jiraToken = process.env.JIRA_API_TOKEN;
       const jiraProject = process.env.JIRA_PROJECT_KEY;
 
-      console.log('Environment check:', {
+      console.log("Environment check:", {
         jiraHost: Boolean(jiraHost),
         jiraEmail: Boolean(jiraEmail),
         jiraToken: Boolean(jiraToken),
@@ -230,19 +295,19 @@ app.post('/slack/interactive', async (req, res) => {
       });
 
       let channelId = payload.user.id;
-      
+
       // Create issue in Jira
       try {
         // Convert plain text description to Atlassian Document Format (ADF)
         const descriptionADF = {
-          type: 'doc',
+          type: "doc",
           version: 1,
           content: [
             {
-              type: 'paragraph',
+              type: "paragraph",
               content: [
                 {
-                  type: 'text',
+                  type: "text",
                   text: description,
                 },
               ],
@@ -255,14 +320,16 @@ app.post('/slack/interactive', async (req, res) => {
           `https://${jiraHost}/rest/api/3/issue/createmeta?projectKeys=${jiraProject}&expand=projects.issuetypes.fields`,
           {
             headers: {
-              Authorization: `Basic ${Buffer.from(`${jiraEmail}:${jiraToken}`).toString('base64')}`,
-              Accept: 'application/json',
+              Authorization: `Basic ${Buffer.from(
+                `${jiraEmail}:${jiraToken}`
+              ).toString("base64")}`,
+              Accept: "application/json",
             },
           }
         );
 
         console.log(
-          'Available issue types:',
+          "Available issue types:",
           JSON.stringify(
             metaResponse.data?.projects?.[0]?.issuetypes?.map((t) => ({
               id: t.id,
@@ -277,18 +344,20 @@ app.post('/slack/interactive', async (req, res) => {
             `https://${jiraHost}/rest/api/3/priority`,
             {
               headers: {
-                Authorization: `Basic ${Buffer.from(`${jiraEmail}:${jiraToken}`).toString('base64')}`,
-                Accept: 'application/json',
+                Authorization: `Basic ${Buffer.from(
+                  `${jiraEmail}:${jiraToken}`
+                ).toString("base64")}`,
+                Accept: "application/json",
               },
             }
           );
 
           console.log(
-            'Available priorities:',
+            "Available priorities:",
             priorityResponse.data.map((p) => ({ id: p.id, name: p.name }))
           );
         } catch (error) {
-          console.error('Error fetching priorities:', error);
+          console.error("Error fetching priorities:", error);
         }
 
         // Build the issue data
@@ -301,11 +370,14 @@ app.post('/slack/interactive', async (req, res) => {
             summary: title,
             description: descriptionADF,
             issuetype: {
-              id: '10002', // Bug type ID
+              id: "10002", // Bug type ID
             },
             priority: {
-              id: '3', // Medium priority ID
+              id: "3", // Medium priority ID
             },
+            components: componentIds.length > 0 
+            ? componentIds.map(id => ({ id })) 
+            : undefined,
           },
         };
 
@@ -328,7 +400,7 @@ app.post('/slack/interactive', async (req, res) => {
               }
             );
 
-            console.log('Slack user data:', JSON.stringify(userResponse.data));
+            console.log("Slack user data:", JSON.stringify(userResponse.data));
 
             if (
               userResponse.data.ok &&
@@ -337,7 +409,7 @@ app.post('/slack/interactive', async (req, res) => {
               userResponse.data.user.profile.email
             ) {
               const userEmail = userResponse.data.user.profile.email;
-              console.log('Found user email:', userEmail);
+              console.log("Found user email:", userEmail);
 
               // Find Jira user by email
               const jiraUserResponse = await axios.get(
@@ -346,13 +418,18 @@ app.post('/slack/interactive', async (req, res) => {
                 )}`,
                 {
                   headers: {
-                    Authorization: `Basic ${Buffer.from(`${jiraEmail}:${jiraToken}`).toString('base64')}`,
-                    Accept: 'application/json',
+                    Authorization: `Basic ${Buffer.from(
+                      `${jiraEmail}:${jiraToken}`
+                    ).toString("base64")}`,
+                    Accept: "application/json",
                   },
                 }
               );
 
-              console.log('Jira users found:', JSON.stringify(jiraUserResponse.data));
+              console.log(
+                "Jira users found:",
+                JSON.stringify(jiraUserResponse.data)
+              );
 
               if (jiraUserResponse.data && jiraUserResponse.data.length > 0) {
                 // Use accountId for Jira Cloud
@@ -360,23 +437,23 @@ app.post('/slack/interactive', async (req, res) => {
                   id: jiraUserResponse.data[0].accountId,
                 };
                 console.log(
-                  'Setting assignee with ID:',
+                  "Setting assignee with ID:",
                   jiraUserResponse.data[0].accountId
                 );
               } else {
                 console.log(
-                  'No matching Jira user found for email:',
+                  "No matching Jira user found for email:",
                   userEmail
                 );
               }
             }
           } catch (error) {
-            console.error('Error handling assignee:', error);
+            console.error("Error handling assignee:", error);
           }
         }
 
         // Log final request payload
-        console.log('Final Jira request payload:', JSON.stringify(issueData));
+        console.log("Final Jira request payload:", JSON.stringify(issueData));
 
         // Test Jira authentication
         try {
@@ -384,15 +461,17 @@ app.post('/slack/interactive', async (req, res) => {
             `https://${jiraHost}/rest/api/3/myself`,
             {
               headers: {
-                Authorization: `Basic ${Buffer.from(`${jiraEmail}:${jiraToken}`).toString('base64')}`,
-                Accept: 'application/json',
+                Authorization: `Basic ${Buffer.from(
+                  `${jiraEmail}:${jiraToken}`
+                ).toString("base64")}`,
+                Accept: "application/json",
               },
             }
           );
 
-          console.log('Jira auth test status:', testResponse.status);
+          console.log("Jira auth test status:", testResponse.status);
         } catch (error) {
-          console.error('Jira auth test failed:', error);
+          console.error("Jira auth test failed:", error);
           throw error;
         }
 
@@ -402,16 +481,21 @@ app.post('/slack/interactive', async (req, res) => {
           issueData,
           {
             headers: {
-              Authorization: `Basic ${Buffer.from(`${jiraEmail}:${jiraToken}`).toString('base64')}`,
-              'Content-Type': 'application/json',
-              Accept: 'application/json',
+              Authorization: `Basic ${Buffer.from(
+                `${jiraEmail}:${jiraToken}`
+              ).toString("base64")}`,
+              "Content-Type": "application/json",
+              Accept: "application/json",
             },
           }
         );
 
         // Add detailed logging
-        console.log('Jira API Response Status:', jiraResponse.status);
-        console.log('Jira API Response Body:', JSON.stringify(jiraResponse.data));
+        console.log("Jira API Response Status:", jiraResponse.status);
+        console.log(
+          "Jira API Response Body:",
+          JSON.stringify(jiraResponse.data)
+        );
 
         const issueKey = jiraResponse.data.key;
         if (!issueKey) {
@@ -435,12 +519,12 @@ app.post('/slack/interactive', async (req, res) => {
                 headers: {
                   Authorization: `Bearer ${slackToken}`,
                 },
-                responseType: 'arraybuffer',
+                responseType: "arraybuffer",
               });
 
               // Create a FormData object for file upload to Jira
               const formData = new FormData();
-              formData.append('file', Buffer.from(fileResponse.data), {
+              formData.append("file", Buffer.from(fileResponse.data), {
                 filename: file.name,
                 contentType: file.mimetype,
               });
@@ -452,15 +536,19 @@ app.post('/slack/interactive', async (req, res) => {
                   formData,
                   {
                     headers: {
-                      Authorization: `Basic ${Buffer.from(`${jiraEmail}:${jiraToken}`).toString('base64')}`,
-                      'X-Atlassian-Token': 'no-check',
-                      Accept: 'application/json',
+                      Authorization: `Basic ${Buffer.from(
+                        `${jiraEmail}:${jiraToken}`
+                      ).toString("base64")}`,
+                      "X-Atlassian-Token": "no-check",
+                      Accept: "application/json",
                       ...formData.getHeaders(), // Important for multipart/form-data
                     },
                   }
                 );
 
-                console.log(`Successfully attached ${file.name} to Jira issue ${issueKey}`);
+                console.log(
+                  `Successfully attached ${file.name} to Jira issue ${issueKey}`
+                );
               } catch (attachError) {
                 console.error(
                   `Error attaching file ${file.name} to Jira:`,
@@ -483,7 +571,7 @@ app.post('/slack/interactive', async (req, res) => {
             }
           }
         } catch (e) {
-          console.error('Error parsing private_metadata:', e);
+          console.error("Error parsing private_metadata:", e);
         }
 
         // Construct a clickable link
@@ -491,7 +579,7 @@ app.post('/slack/interactive', async (req, res) => {
 
         // Notify user of success
         await axios.post(
-          'https://slack.com/api/chat.postMessage',
+          "https://slack.com/api/chat.postMessage",
           {
             channel: channelId,
             text: `✅ Issue created successfully: <${issueUrl}|${issueKey}>`,
@@ -499,16 +587,16 @@ app.post('/slack/interactive', async (req, res) => {
           {
             headers: {
               Authorization: `Bearer ${slackToken}`,
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
           }
         );
       } catch (error) {
-        console.error('Error creating Jira issue:', error);
+        console.error("Error creating Jira issue:", error);
 
         // Notify user of failure
         await axios.post(
-          'https://slack.com/api/chat.postMessage',
+          "https://slack.com/api/chat.postMessage",
           {
             channel: channelId,
             text: `❌ Failed to create issue in Jira: ${error.message}`,
@@ -516,7 +604,7 @@ app.post('/slack/interactive', async (req, res) => {
           {
             headers: {
               Authorization: `Bearer ${slackToken}`,
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
           }
         );
@@ -528,7 +616,7 @@ app.post('/slack/interactive', async (req, res) => {
 
     return res.status(200).send();
   } catch (error) {
-    console.error('Unhandled error:', error);
+    console.error("Unhandled error:", error);
     return res.status(500).json({ error: error.message });
   }
 });
@@ -537,25 +625,25 @@ app.post('/slack/interactive', async (req, res) => {
 function mapPriority(priority) {
   let priorityId;
   switch (priority) {
-    case 'High':
-      priorityId = '2'; // From your list
+    case "High":
+      priorityId = "2"; // From your list
       break;
-    case 'Medium':
-      priorityId = '3'; // From your list
+    case "Medium":
+      priorityId = "3"; // From your list
       break;
-    case 'Low':
-      priorityId = '4'; // From your list
+    case "Low":
+      priorityId = "4"; // From your list
       break;
     default:
-      priorityId = '3'; // Default to Medium
+      priorityId = "3"; // Default to Medium
   }
 
   return priorityId;
 }
 
 // Root endpoint for health check
-app.get('/', (req, res) => {
-  res.status(200).send('Slack-Jira integration service is running');
+app.get("/", (req, res) => {
+  res.status(200).send("Slack-Jira integration service is running");
 });
 
 // Start the server
