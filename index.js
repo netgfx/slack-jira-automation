@@ -12,12 +12,12 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
- // Get credentials
- const slackToken = process.env.SLACK_BOT_TOKEN;
- const jiraHost = process.env.JIRA_HOST;
- const jiraEmail = process.env.JIRA_USERNAME;
- const jiraToken = process.env.JIRA_API_TOKEN;
- const jiraProject = process.env.JIRA_PROJECT_KEY;
+// Get credentials
+const slackToken = process.env.SLACK_BOT_TOKEN;
+const jiraHost = process.env.JIRA_HOST;
+const jiraEmail = process.env.JIRA_USERNAME;
+const jiraToken = process.env.JIRA_API_TOKEN;
+const jiraProject = process.env.JIRA_PROJECT_KEY;
 
 // Helper to verify Slack request signature
 async function verifySlackRequest(req) {
@@ -33,8 +33,9 @@ app.use(bodyParser.json());
 
 // #components
 const fetchComponents = async () => {
-  const componentsResponse = await axios.get(
-    `https://${jiraHost}/rest/api/3/project/${jiraProject}/components`,
+  // Get all fields available for this project and issue type
+  const fieldsResponse = await axios.get(
+    `https://${jiraHost}/rest/api/3/issue/createmeta?projectKeys=${jiraProject}&issuetypeNames=Bug&expand=projects.issuetypes.fields`,
     {
       headers: {
         Authorization: `Basic ${Buffer.from(
@@ -45,7 +46,16 @@ const fetchComponents = async () => {
     }
   );
 
-  const components = componentsResponse.data;
+  // Log all field names to find the components field
+  const fields =
+    fieldsResponse.data?.projects?.[0]?.issuetypes?.[0]?.fields || {};
+  console.log("Available fields:", Object.keys(fields));
+
+  // Look for the components field
+  const componentsField = fields.components;
+  console.log("Components field:", componentsField);
+
+  let components = [];
 
   console.log("Components RAW:", JSON.stringify(components));
 
@@ -286,8 +296,6 @@ app.post("/slack/interactive", async (req, res) => {
       const fileInputData = values.issue_attachments?.attachments;
       console.log("File input data:", JSON.stringify(fileInputData));
 
-     
-
       console.log("Environment check:", {
         jiraHost: Boolean(jiraHost),
         jiraEmail: Boolean(jiraEmail),
@@ -377,9 +385,10 @@ app.post("/slack/interactive", async (req, res) => {
             priority: {
               id: "3", // Medium priority ID
             },
-            components: componentIds.length > 0 
-            ? componentIds.map(id => ({ id })) 
-            : undefined,
+            components:
+              componentIds.length > 0
+                ? componentIds.map((id) => ({ id }))
+                : undefined,
           },
         };
 
