@@ -33,18 +33,45 @@ app.use(bodyParser.json());
 
 // #components
 const fetchComponents = async () => {
-  // Get all fields available for this project and issue type
-  const fieldsResponse = await axios.get(
-    `https://${jiraHost}/rest/api/3/issue/createmeta?projectKeys=${jiraProject}&issuetypeNames=Bug&expand=projects.issuetypes.fields`,
-    {
-      headers: {
-        Authorization: `Basic ${Buffer.from(
-          `${jiraEmail}:${jiraToken}`
-        ).toString("base64")}`,
-        Accept: "application/json",
-      },
+  try {
+    if (
+      customFieldResponse.data &&
+      (customFieldResponse.data.schema.custom.includes("select") ||
+        customFieldResponse.data.schema.custom.includes("multiselect"))
+    ) {
+      console.log(
+        "Log: ",
+        `${Buffer.from(`${jiraEmail}:${jiraToken}`).toString("base64")}`
+      );
+      // Second approach: Fetch the allowed values for this context
+      const contextId = ""; // You might need to determine the correct context ID
+      const optionsResponse = await axios.get(
+        `https://${jiraHost}/rest/api/3/field/customfield_10038/context`,
+        {
+          headers: {
+            Authorization: `Basic ${Buffer.from(
+              `${jiraEmail}:${jiraToken}`
+            ).toString("base64")}`,
+            Accept: "application/json",
+          },
+        }
+      );
+
+      console.log("Custom field options:", optionsResponse.data);
+
+      if (optionsResponse.data && optionsResponse.data.values) {
+        componentOptions = optionsResponse.data.values.map((option) => ({
+          text: {
+            type: "plain_text",
+            text: option.value,
+          },
+          value: option.id,
+        }));
+      }
     }
-  );
+  } catch (fieldError) {
+    console.error("Error fetching custom field options:", fieldError);
+  }
 
   // Log all field names to find the components field
   const fields =
@@ -81,6 +108,8 @@ const fetchComponents = async () => {
   }));
 
   return componentOptions;
+
+  ////
 };
 
 // Handle slash command
