@@ -130,6 +130,7 @@ app.post("/slack/commands", async (req, res) => {
                 type: "plain_text",
                 text: "Issue Title",
               },
+              optional: false,
             },
             {
               type: "input",
@@ -147,7 +148,7 @@ app.post("/slack/commands", async (req, res) => {
                 type: "plain_text",
                 text: "Description",
               },
-              optional: true,
+              optional: false,
             },
             {
               type: "input",
@@ -241,7 +242,7 @@ app.post("/slack/commands", async (req, res) => {
                 type: "plain_text",
                 text: "Assign To",
               },
-              optional: true,
+              optional: false,
             },
           ],
         },
