@@ -41,7 +41,7 @@ const fetchComponents = async () => {
     // Second approach: Fetch the allowed values for this context
     const contextId = ""; // You might need to determine the correct context ID
     const optionsResponse = await axios.get(
-      `https://${jiraHost}/rest/api/3/field/customfield_10038/context`,
+      `https://netgfx.atlassian.net/rest/api/3/issuetype`,
       {
         headers: {
           Authorization: `Basic ${Buffer.from(
@@ -52,13 +52,13 @@ const fetchComponents = async () => {
       }
     );
 
-    console.log("Custom field options:", optionsResponse.data);
+    console.log("Issue type:", optionsResponse.data);
 
-    if (optionsResponse.data && optionsResponse.data.values) {
-      componentOptions = optionsResponse.data.values.map((option) => ({
+    if (optionsResponse.data) {
+      componentOptions = optionsResponse.data.map((option) => ({
         text: {
           type: "plain_text",
-          text: option.value,
+          text: option.name,
         },
         value: option.id,
       }));
@@ -67,24 +67,7 @@ const fetchComponents = async () => {
     console.error("Error fetching custom field options:", fieldError);
   }
 
-  // Log all field names to find the components field
-  const fields =
-    fieldsResponse.data?.projects?.[0]?.issuetypes?.[0]?.fields || {};
-  console.log("Available fields:", Object.keys(fields));
-
-  // actual return value should be fetched from Jira
-  let components = [];
-
-  console.log("Components RAW:", JSON.stringify(components));
-
-  // Create options for the multi-select
-  const componentOptions = components.map((component) => ({
-    text: {
-      type: "plain_text",
-      text: component.name,
-    },
-    value: component.id,
-  }));
+  console.log("Components RAW:", JSON.stringify(componentOptions));
 
   return componentOptions;
 
@@ -205,11 +188,11 @@ app.post("/slack/commands", async (req, res) => {
               type: "input",
               block_id: "issue_components",
               element: {
-                type: "multi_static_select",
+                type: "static_select",
                 action_id: "components",
                 placeholder: {
                   type: "plain_text",
-                  text: "Select components",
+                  text: "Select issue type",
                 },
                 options: components,
               },
