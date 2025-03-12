@@ -51,10 +51,22 @@ const fetchComponents = async () => {
     fieldsResponse.data?.projects?.[0]?.issuetypes?.[0]?.fields || {};
   console.log("Available fields:", Object.keys(fields));
 
-  // Look for the components field
-  const componentsField = fields.components;
-  console.log("Components field:", componentsField);
+  // First approach: Fetch custom field metadata
+  const customFieldResponse = await axios.get(
+    `https://${jiraHost}/rest/api/3/field/customfield_10038`,
+    {
+      headers: {
+        Authorization: `Basic ${Buffer.from(
+          `${jiraEmail}:${jiraToken}`
+        ).toString("base64")}`,
+        Accept: "application/json",
+      },
+    }
+  );
 
+  console.log("Custom field metadata:", customFieldResponse.data);
+
+  // actual return value should be fetched from Jira
   let components = [];
 
   console.log("Components RAW:", JSON.stringify(components));
