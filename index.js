@@ -34,7 +34,6 @@ app.use(bodyParser.json());
 // #components
 const fetchComponents = async () => {
   try {
-   
     const contextId = ""; // You might need to determine the correct context ID
     const optionsResponse = await axios.get(
       `https://netgfx.atlassian.net/rest/api/3/issuetype`,
@@ -119,12 +118,12 @@ app.post("/slack/commands", async (req, res) => {
                 action_id: "title",
                 placeholder: {
                   type: "plain_text",
-                  text: "Enter issue title",
+                  text: "e.g: [Platform] Issue with live match",
                 },
               },
               label: {
                 type: "plain_text",
-                text: "Issue Title",
+                text: "Issue Title (Include platform)",
               },
               optional: false,
             },
@@ -385,7 +384,7 @@ app.post("/slack/interactive", async (req, res) => {
             },
             priority: {
               id: "3", // Medium priority ID
-            }
+            },
           },
         };
 
@@ -582,15 +581,22 @@ app.post("/slack/interactive", async (req, res) => {
           console.error("Error parsing private_metadata:", e);
         }
 
-        // Construct a clickable link
+        // Construct a clickable link with title and description
         const issueUrl = `https://${jiraHost}/browse/${issueKey}`;
+        const truncatedDescription =
+          description.length > 280
+            ? description.substring(0, 277) + "..."
+            : description;
+
+        // Create a formatted message with the title and description
+        const successMessage = `✅ Issue created successfully: <${issueUrl}|${issueKey}>\n*Title:* ${title}\n*Description:* ${truncatedDescription}`;
 
         // Notify user of success
         await axios.post(
           "https://slack.com/api/chat.postMessage",
           {
             channel: channelId,
-            text: `✅ Issue created successfully: <${issueUrl}|${issueKey}>`,
+            text: successMessage,
           },
           {
             headers: {
