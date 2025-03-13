@@ -284,9 +284,8 @@ app.post("/slack/interactive", async (req, res) => {
       const assigneeSlackId =
         values.issue_assignee.assignee?.selected_user || "";
       // Extract selected components
-      const selectedComponents =
-        values.issue_components?.components?.selected_options || [];
-      const componentIds = selectedComponents.map((option) => option.value);
+      const selectedComponent =
+        values.issue_components?.components?.selected_option.value;
 
       // Debug the entire payload structure
       console.log("Full view submission payload:", JSON.stringify(payload));
@@ -370,7 +369,7 @@ app.post("/slack/interactive", async (req, res) => {
           console.error("Error fetching priorities:", error);
         }
 
-        console.log("Components selected:", componentIds, selectedComponents, values.issue_components);
+        console.log("Components selected:", selectedComponent);
 
         // Build the issue data
         const issueData = {
@@ -382,15 +381,11 @@ app.post("/slack/interactive", async (req, res) => {
             summary: title,
             description: descriptionADF,
             issuetype: {
-              id: componentIds.length > 0 ? componentIds[0] : "10002", // Default to "Bug" if no component selected
+              id: selectedComponent || "10002", // Default to "Bug" if no component selected
             },
             priority: {
               id: "3", // Medium priority ID
-            },
-            components:
-              componentIds.length > 0
-                ? componentIds.map((id) => ({ id }))
-                : undefined,
+            }
           },
         };
 
