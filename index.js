@@ -370,7 +370,7 @@ app.post("/slack/interactive", async (req, res) => {
           console.error("Error fetching priorities:", error);
         }
 
-        console.log("Components selected:", componentIds);
+        console.log("Components selected:", componentIds, selectedComponents, values.issue_components);
 
         // Build the issue data
         const issueData = {
