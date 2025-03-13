@@ -195,7 +195,7 @@ app.post("/slack/commands", async (req, res) => {
               },
               label: {
                 type: "plain_text",
-                text: "Components",
+                text: "Issue Type",
               },
               optional: true,
             },
