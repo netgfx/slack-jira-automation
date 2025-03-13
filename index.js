@@ -34,11 +34,7 @@ app.use(bodyParser.json());
 // #components
 const fetchComponents = async () => {
   try {
-    console.log(
-      "Log: ",
-      `${Buffer.from(`${jiraEmail}:${jiraToken}`).toString("base64")}`
-    );
-    // Second approach: Fetch the allowed values for this context
+   
     const contextId = ""; // You might need to determine the correct context ID
     const optionsResponse = await axios.get(
       `https://netgfx.atlassian.net/rest/api/3/issuetype`,
@@ -384,7 +380,7 @@ app.post("/slack/interactive", async (req, res) => {
             summary: title,
             description: descriptionADF,
             issuetype: {
-              id: "10002", // Bug type ID
+              id: componentIds.length > 0 ? componentIds[0] : "10004", // Default to "Bug" if no component selected
             },
             priority: {
               id: "3", // Medium priority ID
