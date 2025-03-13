@@ -370,6 +370,8 @@ app.post("/slack/interactive", async (req, res) => {
           console.error("Error fetching priorities:", error);
         }
 
+        console.log("Components selected:", componentIds);
+
         // Build the issue data
         const issueData = {
           fields: {
@@ -380,7 +382,7 @@ app.post("/slack/interactive", async (req, res) => {
             summary: title,
             description: descriptionADF,
             issuetype: {
-              id: componentIds.length > 0 ? componentIds[0] : "10004", // Default to "Bug" if no component selected
+              id: componentIds.length > 0 ? componentIds[0] : "10002", // Default to "Bug" if no component selected
             },
             priority: {
               id: "3", // Medium priority ID
