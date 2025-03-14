@@ -17,7 +17,6 @@ const slackToken = process.env.SLACK_BOT_TOKEN;
 const jiraHost = process.env.JIRA_HOST;
 const jiraEmail = process.env.JIRA_USERNAME;
 const jiraToken = process.env.JIRA_API_TOKEN;
-const jiraProject = process.env.JIRA_PROJECT_KEY;
 
 // Helper to verify Slack request signature
 async function verifySlackRequest(req) {
@@ -31,7 +30,12 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Parse JSON bodies
 app.use(bodyParser.json());
 
-// #components
+// #issue-types
+/**
+ * Fetch issue types from Jira
+ *
+ * @return {*} 
+ */
 const fetchComponents = async () => {
   try {
     const contextId = ""; // You might need to determine the correct context ID
@@ -69,6 +73,35 @@ const fetchComponents = async () => {
   ////
 };
 
+// #projects
+/**
+ * Fetch projects from Jira
+ *
+ * @return {*} 
+ */
+const fetchProjects = async () => {
+  try {
+    const response = await axios.get(
+      `https://${jiraHost}/rest/api/3/project`,
+      {
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${jiraEmail}:${jiraToken}`).toString('base64')}`,
+          Accept: "application/json"
+        }
+      }
+    );
+    
+    return response.data.map(project => ({
+      id: project.id,
+      key: project.key,
+      name: project.name
+    }));
+  } catch (error) {
+    console.error("Error fetching projects:", error);
+    return [];
+  }
+};
+
 // Handle slash command
 app.post("/slack/commands", async (req, res) => {
   try {
@@ -89,8 +122,17 @@ app.post("/slack/commands", async (req, res) => {
 
     // wait for components or other elements to be fetched
     const components = await fetchComponents();
+    const projects = await fetchProjects();
+    const projectOptions = projects.map(project => ({
+      text: {
+        type: "plain_text",
+        text: `${project.key} - ${project.name}`
+      },
+      value: project.key
+    }));
+    console.log("issue types:", JSON.stringify(components));
 
-    console.log("Components:", JSON.stringify(components));
+    console.log("projects:", JSON.stringify(projects));
 
     // Open a modal in Slack
     const response = await axios.post(
@@ -110,6 +152,24 @@ app.post("/slack/commands", async (req, res) => {
             text: "Submit",
           },
           blocks: [
+            {
+              type: "input",
+              block_id: "project_select",
+              element: {
+                type: "static_select",
+                action_id: "project",
+                placeholder: {
+                  type: "plain_text",
+                  text: "Select project"
+                },
+                options: projectOptions
+              },
+              label: {
+                type: "plain_text",
+                text: "Project"
+              },
+              optional: false,
+            },
             {
               type: "input",
               block_id: "issue_title",
@@ -285,6 +345,7 @@ app.post("/slack/interactive", async (req, res) => {
       // Extract selected components
       const selectedComponent =
         values.issue_components?.components?.selected_option.value;
+      const projectName = values.project_select.project.selected_option.value;
 
       // Debug the entire payload structure
       console.log("Full view submission payload:", JSON.stringify(payload));
@@ -298,7 +359,7 @@ app.post("/slack/interactive", async (req, res) => {
         jiraHost: Boolean(jiraHost),
         jiraEmail: Boolean(jiraEmail),
         jiraToken: Boolean(jiraToken),
-        jiraProject: Boolean(jiraProject),
+        jiraProject: Boolean(projectName),
         slackToken: Boolean(slackToken),
       });
 
@@ -325,7 +386,7 @@ app.post("/slack/interactive", async (req, res) => {
 
         // Get issue types
         const metaResponse = await axios.get(
-          `https://${jiraHost}/rest/api/3/issue/createmeta?projectKeys=${jiraProject}&expand=projects.issuetypes.fields`,
+          `https://${jiraHost}/rest/api/3/issue/createmeta?projectKeys=${projectName}&expand=projects.issuetypes.fields`,
           {
             headers: {
               Authorization: `Basic ${Buffer.from(
@@ -375,7 +436,7 @@ app.post("/slack/interactive", async (req, res) => {
           fields: {
             assignee: {},
             project: {
-              key: jiraProject,
+              key: projectName,
             },
             summary: title,
             description: descriptionADF,
