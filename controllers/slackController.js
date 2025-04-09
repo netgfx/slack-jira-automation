@@ -124,7 +124,7 @@ class SlackController {
       const errorMessage = SlackTemplateFactory.createErrorMessage(
         error.message
       );
-      await slackService.sendMessage(payload.user.id, errorMessage);
+      await slackService.sendMessage(channelId, errorMessage);
     }
   }
 
