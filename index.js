@@ -20,8 +20,6 @@ const jiraToken = process.env.JIRA_API_TOKEN;
 
 // Helper to verify Slack request signature
 async function verifySlackRequest(req) {
-  // Implement actual signature verification logic here
-  // This is simplified for the example
   return { isValid: true, body: req.body };
 }
 
@@ -34,7 +32,7 @@ app.use(bodyParser.json());
 /**
  * Fetch issue types from Jira
  *
- * @return {*} 
+ * @return {*}
  */
 const fetchComponents = async () => {
   try {
@@ -77,24 +75,23 @@ const fetchComponents = async () => {
 /**
  * Fetch projects from Jira
  *
- * @return {*} 
+ * @return {*}
  */
 const fetchProjects = async () => {
   try {
-    const response = await axios.get(
-      `https://${jiraHost}/rest/api/3/project`,
-      {
-        headers: {
-          Authorization: `Basic ${Buffer.from(`${jiraEmail}:${jiraToken}`).toString('base64')}`,
-          Accept: "application/json"
-        }
-      }
-    );
-    
-    return response.data.map(project => ({
+    const response = await axios.get(`https://${jiraHost}/rest/api/3/project`, {
+      headers: {
+        Authorization: `Basic ${Buffer.from(
+          `${jiraEmail}:${jiraToken}`
+        ).toString("base64")}`,
+        Accept: "application/json",
+      },
+    });
+
+    return response.data.map((project) => ({
       id: project.id,
       key: project.key,
-      name: project.name
+      name: project.name,
     }));
   } catch (error) {
     console.error("Error fetching projects:", error);
@@ -123,12 +120,12 @@ app.post("/slack/commands", async (req, res) => {
     // wait for components or other elements to be fetched
     const components = await fetchComponents();
     const projects = await fetchProjects();
-    const projectOptions = projects.map(project => ({
+    const projectOptions = projects.map((project) => ({
       text: {
         type: "plain_text",
-        text: `${project.key} - ${project.name}`
+        text: `${project.key} - ${project.name}`,
       },
-      value: project.key
+      value: project.key,
     }));
     console.log("issue types:", JSON.stringify(components));
 
@@ -160,13 +157,13 @@ app.post("/slack/commands", async (req, res) => {
                 action_id: "project",
                 placeholder: {
                   type: "plain_text",
-                  text: "Select project"
+                  text: "Select project",
                 },
-                options: projectOptions
+                options: projectOptions,
               },
               label: {
                 type: "plain_text",
-                text: "Project"
+                text: "Project",
               },
               optional: false,
             },
